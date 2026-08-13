@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickDine - Full Menu</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+      .menu-header {
+        padding: 60px 50px 20px;
+        background: rgba(255, 255, 255, 0.02);
+        text-align: center;
+      }
+      .menu-header h1 {
+        margin: 0;
+        font-size: 4rem;
+        font-weight: 800;
+        background: linear-gradient(to right, #ffffff, #a4b0be);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Consistent glass header on a solid background -->
+    <header class="glass-header" style="background: #0f1014; border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <div class="logo">Quick<span>Dine</span></div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/menu.html" style="color: var(--primary)">Menu</a>
+        <a href="/reservations.html">Reservations</a>
+        <a href="/contact.html">Contact</a>
+      </nav>
+      <div class="header-cart" style="justify-self: end; cursor: pointer; position: relative;">
+        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        <span class="header-cart-count" style="position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold; display: none;">0</span>
+      </div>
+    </header>
+
+    <div class="menu-header animate-up">
+      <h1>Our Full Menu</h1>
+      <p style="color: var(--text-muted); font-size: 1.3rem; margin-top: 15px;">Discover our culinary masterpieces across Indian, Chinese, and Western flavors.</p>
+      
+      <div class="category-filters" style="display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap;">
+        <button class="filter-btn active" data-category="all">All Items</button>
+        <button class="filter-btn" data-category="indian">🇮🇳 Indian Food</button>
+        <button class="filter-btn" data-category="chinese">🥢 Chinese Food</button>
+        <button class="filter-btn" data-category="western">🍝 Western Specials</button>
+      </div>
+    </div>
+
+    <section class="features" style="padding-top: 40px; padding-bottom: 100px;">
+       <div id="full-menu-container" class="cards-container">
+           <!-- Content injected via menu.js -->
+       </div>
+    </section>
+
+    <script type="module" src="/src/cart.js"></script>
+    <script type="module" src="/src/menu.js"></script>
+  </body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Dashboard - QuickDine</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #0f111a; padding: 20px; }
+        .order-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .order-header { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
+        .item-list { list-style: none; padding: 0; margin: 0; }
+        .item-list li { padding: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; }
+        .status-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107; }
+        .status-preparing { background: rgba(0, 123, 255, 0.2); color: #007bff; border: 1px solid #007bff; }
+        .status-ready { background: rgba(40, 167, 69, 0.2); color: #28a745; border: 1px solid #28a745; }
+        .actions { margin-top: 15px; display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+    <header class="glass-header" style="position: static; margin-bottom: 30px;">
+        <div class="logo">Kitchen<span>Dashboard</span></div>
+    </header>
+
+    <div id="orders-container" style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
+        <h2 style="color: white; width: 100%; grid-column: 1 / -1;">Active Orders</h2>
+        <!-- Orders injected here -->
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:8000/api/orders`;
+
+        async function fetchOrders() {
+            try {
+                const response = await fetch(API_URL);
+                const orders = await response.json();
+                renderOrders(orders);
+            } catch (err) {
+                console.error("Failed to fetch orders:", err);
+            }
+        }
+
+        async function updateStatus(orderId, newStatus) {
+            try {
+                await fetch(`${API_URL}/${orderId}/status?status=${newStatus}`, { method: 'PUT' });
+                fetchOrders();
+            } catch (err) {
+                console.error("Failed to update status:", err);
+            }
+        }
+
+        function renderOrders(orders) {
+            const container = document.getElementById('orders-container');
+            let html = '<h2 style="color: white; width: 100%; grid-column: 1 / -1;">Active Orders</h2>';
+            
+            const activeOrders = orders.filter(o => o.status !== 'served');
+            
+            if (activeOrders.length === 0) {
+                html += '<p style="color: var(--text-muted);">No active orders at the moment.</p>';
+            }
+
+            activeOrders.forEach(order => {
+                let badgeClass = 'status-pending';
+                if (order.status === 'preparing') badgeClass = 'status-preparing';
+                if (order.status === 'ready_for_waiter') badgeClass = 'status-ready';
+
+                html += `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <h3 style="margin: 0; color: white;">Table #${order.table_number}</h3>
+                                <small style="color: var(--text-muted);">${order.id}</small>
+                            </div>
+                            <span class="status-badge ${badgeClass}">${order.status.replace('_', ' ').toUpperCase()}</span>
+                        </div>
+                        <ul class="item-list">
+                            ${order.items.map(item => `
+                                <li style="color: #eee;">
+                                    <span style="font-weight: bold; color: var(--primary);">${item.quantity}x</span> ${item.title}
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <div class="actions">
+                            ${order.status === 'pending' ? `<button class="cta-btn primary-btn" onclick="updateStatus('${order.id}', 'preparing')" style="font-size: 0.9rem; padding: 8px 15px;">Start Preparing</button>` : ''}
+                            ${order.status === 'preparing' ? `<button class="cta-btn primary-btn" onclick="updateStatus('${order.id}', 'ready_for_waiter')" style="font-size: 0.9rem; padding: 8px 15px; background: #28a745; box-shadow: none;">Ready for Waiter</button>` : ''}
+                            ${order.status === 'ready_for_waiter' ? `<button class="cta-btn secondary-btn" onclick="updateStatus('${order.id}', 'served')" style="font-size: 0.9rem; padding: 8px 15px;">Mark as Served</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // Fetch initially and then poll every 3 seconds
+        fetchOrders();
+        setInterval(fetchOrders, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickDine - Premium Dining</title>
+    <meta name="description" content="QuickDine - Your favorite meals, delivered fast.">
+    <link rel="stylesheet" href="/src/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="hero-section">
+      <div class="overlay"></div>
+      <header class="glass-header">
+        <div class="logo">Quick<span>Dine</span></div>
+        <nav>
+          <a href="/">Home</a>
+          <a href="/menu.html">Menu</a>
+          <a href="/reservations.html">Reservations</a>
+          <a href="/contact.html">Contact</a>
+        </nav>
+        <div class="header-cart" style="justify-self: end; cursor: pointer; position: relative;">
+          <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+          <span class="header-cart-count" style="position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold; display: none;">0</span>
+        </div>
+      </header>
+      
+      <main id="main-content" class="hero-content">
+        <h1 class="animate-up">Experience Fine Dining</h1>
+        <p class="animate-up delay-1">Exquisite flavors, delivered to your door or served at our premium locations.</p>
+        <div class="action-buttons animate-up delay-2">
+          <button id="view-menu-btn" class="cta-btn primary-btn large">View Menu</button>
+          <button id="book-table-btn" class="cta-btn secondary-btn large">Book a Table</button>
+        </div>
+      </main>
+    </div>
+
+    <section id="menu-section" class="features">
+      <!-- Content injected via JS -->
+    </section>
+
+    <!-- Booking Modal -->
+    <div id="booking-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h2>Book a Table</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Reserve your spot for an unforgettable dining experience.</p>
+        <form id="booking-form">
+          <input type="date" required>
+          <input type="time" required>
+          <input type="number" placeholder="Number of Guests" min="1" max="20" required>
+          <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <button type="submit" class="cta-btn primary-btn" style="flex: 1;">Confirm</button>
+            <button type="button" id="close-modal-btn" class="cta-btn secondary-btn" style="flex: 1;">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/src/cart.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
