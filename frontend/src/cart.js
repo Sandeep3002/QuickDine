@@ -20,6 +20,13 @@ const initCart = () => {
     
     // Cloud API for instant cross-device order sync (Mobile Phone <-> Owner Laptop)
     const CLOUD_API_URL = 'https://crudcrud.com/api/0248b791129540a18a4b94824e160c04/orders';
+
+    const fetchWithTimeout = (url, timeoutMs = 2000, options = {}) => {
+        return Promise.race([
+            fetch(url, options),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), timeoutMs))
+        ]);
+    };
     // ─────────────────────────────────────────────────────────────────────────
 
     // Detect Table Number from URL query parameter (e.g. ?table=5) or localStorage
@@ -195,29 +202,44 @@ const initCart = () => {
         const cartModalContent = document.getElementById('cart-modal-content');
         if (!cartItemsContainer || !cartTotalEl) return;
 
-        // Fetch live orders for this table from backend
+        // Fetch live orders for this table from Cloud Sync API
         let liveOrders = [];
         try {
-            const res = await fetch(`${API_BASE}/api/orders`);
-            if (!res.ok) throw new Error('Backend HTTP error');
-            const data = await res.json();
-            liveOrders = data.filter(o => o.table_number.toString() === currentTable.toString() && o.status !== 'paid');
-        } catch (err) {
-            console.warn('Backend API offline, using local placed orders fallback');
-            if (placedOrders.length > 0) {
-                let totalAmount = 0;
-                placedOrders.forEach(item => {
-                    const price = parseInt(item.price.replace(/[^0-9]/g, ''));
-                    totalAmount += price * item.quantity;
-                });
-                liveOrders = [{
-                    id: 'QD-LOCAL',
-                    table_number: currentTable,
-                    items: placedOrders,
-                    total_amount: totalAmount,
-                    status: 'preparing'
-                }];
+            const res = await fetchWithTimeout(CLOUD_API_URL, 1500);
+            if (res.ok) {
+                const cloudData = await res.json();
+                if (Array.isArray(cloudData)) {
+                    liveOrders = cloudData.filter(co => {
+                        const rawNum = co.table_number || co.table || '1';
+                        const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+                        return tNum === parseInt(currentTable) && co.status !== 'paid' && co.status !== 'cancelled';
+                    });
+                }
             }
+        } catch (err) {}
+
+        if (liveOrders.length === 0 && placedOrders.length > 0) {
+            let totalAmount = 0;
+            placedOrders.forEach(item => {
+                const price = parseInt(item.price.replace(/[^0-9]/g, ''));
+                totalAmount += price * item.quantity;
+            });
+            const realOrderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
+            const syncRecord = {
+                id: realOrderId,
+                table_number: parseInt(currentTable),
+                items: placedOrders,
+                total_amount: totalAmount,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            };
+            fetch(CLOUD_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(syncRecord)
+            }).catch(e => {});
+
+            liveOrders = [syncRecord];
         }
 
         // Dynamic modal width based on split layout
