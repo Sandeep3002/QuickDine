@@ -336,9 +336,23 @@ const initCart = () => {
                      const btn = document.getElementById('bring-bill-btn');
                      btn.innerText = 'Requesting Bill...';
                      btn.disabled = true;
+
+                     // Cloud sync: Send bill_requested status to Cloud API for cross-device dashboard alert
+                     fetch(CLOUD_API_URL, {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify({
+                             table_number: parseInt(currentTable),
+                             status: 'bill_requested',
+                             needs_bill: true,
+                             total_amount: liveTotal,
+                             items: liveOrders.flatMap(o => o.items || [{ title: 'Bill Request', price: '₹' + liveTotal, quantity: 1 }]),
+                             created_at: new Date().toISOString()
+                         })
+                     }).catch(e => console.warn("Cloud bill request error:", e));
                      
                      setTimeout(async () => {
-                         // Mark all as bill_requested in backend
+                         // Mark all as bill_requested in backend if local API is up
                          for (let o of liveOrders) {
                              try {
                                  await fetch(`${API_BASE}/api/orders/${o.id}/status?status=bill_requested`, { method: 'PUT' });
@@ -371,7 +385,7 @@ const initCart = () => {
                                  window.location.href = 'menu.html';
                              });
                          }
-                     }, 1200);
+                     }, 800);
                  });
              } else {
                  actionButtons.innerHTML = `
