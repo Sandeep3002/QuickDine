@@ -5,13 +5,12 @@ const initCart = () => {
     // ── Network host & Base URL ────────────────────────────────────────────────
     const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
     const LAN_IP = '192.168.1.11';           // your PC's local network IP
-    const FRONTEND_PORT = window.location.port ? `:${window.location.port}` : (isLocal ? ':5173' : '');
     const BACKEND_PORT  = '8000';
 
-    // SITE_BASE: For QR codes. In production (Vercel), use window.location.origin.
-    // In local dev, use http://${LAN_IP}${FRONTEND_PORT} so scanned phones reach local PC.
+    // SITE_BASE: For QR codes. In production (Vercel), use clean origin (https://my-app.vercel.app)
+    // In local dev, use http://${LAN_IP}:5173 so scanned phones reach local PC.
     const SITE_BASE = isLocal 
-        ? `http://${LAN_IP}${FRONTEND_PORT}` 
+        ? `http://${LAN_IP}:${window.location.port || '5173'}` 
         : window.location.origin;
 
     // API_BASE: Backend API URL
@@ -57,6 +56,7 @@ const initCart = () => {
 
         <div style="background: #ffffff; padding: 15px; border-radius: 16px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px;">
             <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(SITE_BASE + '/menu.html?table=' + currentTable)}" alt="Table QR Code" style="width: 180px; height: 180px; display: block;" />
+            <div id="qr-target-url" style="font-size: 0.75rem; color: #555; margin-top: 8px; word-break: break-all; max-width: 200px; font-weight: 500;">${SITE_BASE}/menu.html?table=${currentTable}</div>
         </div>
 
         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
@@ -137,7 +137,11 @@ const initCart = () => {
         if (modalActiveTable) modalActiveTable.innerText = `Table #${currentTable}`;
 
         const qrCodeImg = document.getElementById('qr-code-img');
-        if (qrCodeImg) qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(SITE_BASE + '/menu.html?table=' + currentTable)}`;
+        const targetUrl = `${SITE_BASE}/menu.html?table=${currentTable}`;
+        if (qrCodeImg) qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(targetUrl)}`;
+
+        const qrTargetUrl = document.getElementById('qr-target-url');
+        if (qrTargetUrl) qrTargetUrl.innerText = targetUrl;
 
         renderTableSelector();
     };
