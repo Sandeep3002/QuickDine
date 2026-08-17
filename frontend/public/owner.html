@@ -354,6 +354,13 @@ function showToast(message) {
   }, 6000);
 }
 
+const fetchWithTimeout = (url, timeoutMs = 1500) => {
+  return Promise.race([
+    fetch(url),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), timeoutMs))
+  ]);
+};
+
 async function buildLocalTables() {
   let tablesMap = new Map();
   
@@ -372,7 +379,7 @@ async function buildLocalTables() {
 
   let allOrdersMap = new Map();
 
-  // 2. Read Local Storage orders
+  // 2. Read Local Storage orders synchronously (Instant)
   try {
     const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
     localOrders.forEach(o => {
@@ -383,9 +390,9 @@ async function buildLocalTables() {
     });
   } catch(e) {}
 
-  // 3. Fetch Cloud API orders (Cross-Device)
+  // 3. Fetch Cloud API orders (with 1.5s max timeout to prevent page freeze)
   try {
-    const cloudResp = await fetch(CLOUD_API_URL);
+    const cloudResp = await fetchWithTimeout(CLOUD_API_URL, 1500);
     if (cloudResp.ok) {
       const cloudOrders = await cloudResp.json();
       if (Array.isArray(cloudOrders)) {
@@ -408,13 +415,15 @@ async function buildLocalTables() {
         });
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn("Cloud sync network timeout/offline mode active");
+  }
 
   // 4. Fetch Local Backend API (only if running locally on localhost)
   const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   if (isLocalHost) {
     try {
-      const resp = await fetch(`http://${window.location.hostname}:8000/api/tables`);
+      const resp = await fetchWithTimeout(`http://${window.location.hostname}:8000/api/tables`, 1000);
       if (resp.ok) {
         const backendTables = await resp.json();
         if (Array.isArray(backendTables)) {
@@ -451,11 +460,9 @@ async function buildLocalTables() {
   return Array.from(tablesMap.values());
 }
 
-/* ========== Load all tables ========== */
-async function loadTables() {
-  const tables = await buildLocalTables();
-
+function renderTablesUI(tables) {
   const container = document.getElementById('tables');
+  if (!container) return;
   container.innerHTML = '';
 
   let totalOccupied = 0, totalOrders = 0, totalRevenue = 0;
@@ -505,6 +512,12 @@ async function loadTables() {
   document.querySelectorAll('.detail-btn').forEach(btn => {
     btn.addEventListener('click', e => showTableDetail(e.currentTarget.dataset.table));
   });
+}
+
+/* ========== Load all tables ========== */
+async function loadTables() {
+  const tables = await buildLocalTables();
+  renderTablesUI(tables);
 }
 
 /* ========== Show detail for one table ========== */
@@ -609,9 +622,23 @@ window.addEventListener('click', e => {
   if (e.target.id === 'detail-modal') e.target.style.display = 'none';
 });
 
-/* ========== Auto-refresh every 5 seconds ========== */
+/* ========== Auto-refresh every 4 seconds ========== */
+const defaultTables = [];
+for (let i = 1; i <= 10; i++) {
+  defaultTables.push({
+    table_number: i,
+    is_occupied: false,
+    active_order_count: 0,
+    total_unpaid_amount: 0,
+    needs_bill: false,
+    orders: [],
+    total_bill: 0
+  });
+}
+renderTablesUI(defaultTables);
+
 loadTables();
-setInterval(loadTables, 5000);
+setInterval(loadTables, 4000);
 </script>
 
 </body>
