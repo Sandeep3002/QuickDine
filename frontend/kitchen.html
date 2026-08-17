@@ -86,12 +86,6 @@
             }
             fetchOrders();
         }
-            if (idx !== -1) {
-                orders[idx].status = newStatus;
-                localStorage.setItem('quickdine_all_orders', JSON.stringify(orders));
-            }
-            fetchOrders();
-        }
 
         function renderOrders(orders) {
             const container = document.getElementById('orders-container');
