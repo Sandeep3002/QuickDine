@@ -33,22 +33,36 @@
         const API_URL = `http://${window.location.hostname}:8000/api/orders`;
 
         async function fetchOrders() {
+            let orders = [];
             try {
                 const response = await fetch(API_URL);
-                const orders = await response.json();
-                renderOrders(orders);
+                if (response.ok) {
+                    orders = await response.json();
+                } else {
+                    throw new Error("Backend API HTTP error");
+                }
             } catch (err) {
-                console.error("Failed to fetch orders:", err);
+                // Fallback to shared local storage orders
+                orders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
             }
+            renderOrders(orders);
         }
 
         async function updateStatus(orderId, newStatus) {
             try {
                 await fetch(`${API_URL}/${orderId}/status?status=${newStatus}`, { method: 'PUT' });
-                fetchOrders();
             } catch (err) {
-                console.error("Failed to update status:", err);
+                console.warn("Backend API offline, updating order status in local storage:", err);
             }
+            
+            // Always update local storage for fallback / standalone mode
+            let orders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+            const idx = orders.findIndex(o => o.id === orderId);
+            if (idx !== -1) {
+                orders[idx].status = newStatus;
+                localStorage.setItem('quickdine_all_orders', JSON.stringify(orders));
+            }
+            fetchOrders();
         }
 
         function renderOrders(orders) {

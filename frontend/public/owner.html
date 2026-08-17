@@ -353,146 +353,188 @@ function showToast(message) {
   }, 6000);
 }
 
+function buildLocalTables() {
+  const allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+  const tableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  return tableNumbers.map(num => {
+    const tableOrders = allGlobalOrders.filter(o => Number(o.table_number) === num && o.status !== 'paid' && o.status !== 'cancelled');
+    let total_unpaid_amount = 0;
+    let needs_bill = false;
+    tableOrders.forEach(o => {
+      total_unpaid_amount += Number(o.total_amount || 0);
+      if (o.status === 'bill_requested' || o.needs_bill) needs_bill = true;
+    });
+
+    return {
+      table_number: num,
+      is_occupied: tableOrders.length > 0,
+      active_order_count: tableOrders.length,
+      total_unpaid_amount: total_unpaid_amount,
+      needs_bill: needs_bill,
+      orders: tableOrders,
+      total_bill: total_unpaid_amount
+    };
+  });
+}
+
 /* ========== Load all tables ========== */
 async function loadTables() {
+  let tables = [];
   try {
     const resp = await fetch(`${API}/api/tables`);
-    const tables = await resp.json();
-    const container = document.getElementById('tables');
-    container.innerHTML = '';
-
-    let totalOccupied = 0, totalOrders = 0, totalRevenue = 0;
-    let currentNeedsBillState = {};
-
-    tables.forEach(t => {
-      // Use actual schema field names
-      const occupied = t.is_occupied;
-      const orderCount = t.active_order_count;
-      const unpaid = t.total_unpaid_amount;
-
-      if (occupied) totalOccupied++;
-      totalOrders += orderCount;
-      totalRevenue += unpaid;
-
-      const card = document.createElement('div');
-      card.className = `table-card ${occupied ? 'occupied' : 'free'}`;
-      card.innerHTML = `
-        <div class="table-card-header">
-          <span class="table-name">🪑 Table ${t.table_number}</span>
-          <div>
-            ${t.needs_bill ? '<span class="status-pill" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.4); margin-right: 5px; animation: pulse 1s infinite;">🧾 BILL REQUESTED</span>' : ''}
-            <span class="status-pill ${occupied ? 'busy' : 'free-pill'}">${occupied ? 'Occupied' : 'Free'}</span>
-          </div>
-        </div>
-        <div class="table-info">
-          <span>Active orders: <b>${orderCount}</b></span>
-          <span class="amount">${fmt(unpaid)}</span>
-        </div>
-        ${occupied ? `<button class="detail-btn" data-table="${t.table_number}">View Orders</button>` : ''}
-      `;
-      container.appendChild(card);
-      
-      // Toast notification logic
-      if (t.needs_bill) {
-        currentNeedsBillState[t.table_number] = true;
-        if (!prevNeedsBillState[t.table_number]) {
-          showToast(`Table ${t.table_number} is asking for the bill!`);
-        }
-      }
-    });
-
-    prevNeedsBillState = currentNeedsBillState;
-
-    // Update stats
-    document.getElementById('stat-occupied').textContent = totalOccupied;
-    document.getElementById('stat-orders').textContent = totalOrders;
-    document.getElementById('stat-revenue').textContent = fmt(totalRevenue);
-
-    // Attach click listeners
-    document.querySelectorAll('.detail-btn').forEach(btn => {
-      btn.addEventListener('click', e => showTableDetail(e.currentTarget.dataset.table));
-    });
+    if (resp.ok) {
+      tables = await resp.json();
+    } else {
+      tables = buildLocalTables();
+    }
   } catch (err) {
-    console.error('Failed to load tables:', err);
+    tables = buildLocalTables();
   }
+
+  const container = document.getElementById('tables');
+  container.innerHTML = '';
+
+  let totalOccupied = 0, totalOrders = 0, totalRevenue = 0;
+  let currentNeedsBillState = {};
+
+  tables.forEach(t => {
+    const occupied = t.is_occupied;
+    const orderCount = t.active_order_count;
+    const unpaid = t.total_unpaid_amount;
+
+    if (occupied) totalOccupied++;
+    totalOrders += orderCount;
+    totalRevenue += unpaid;
+
+    const card = document.createElement('div');
+    card.className = `table-card ${occupied ? 'occupied' : 'free'}`;
+    card.innerHTML = `
+      <div class="table-card-header">
+        <span class="table-name">🪑 Table ${t.table_number}</span>
+        <div>
+          ${t.needs_bill ? '<span class="status-pill" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.4); margin-right: 5px; animation: pulse 1s infinite;">🧾 BILL REQUESTED</span>' : ''}
+          <span class="status-pill ${occupied ? 'busy' : 'free-pill'}">${occupied ? 'Occupied' : 'Free'}</span>
+        </div>
+      </div>
+      <div class="table-info">
+        <span>Active orders: <b>${orderCount}</b></span>
+        <span class="amount">${fmt(unpaid)}</span>
+      </div>
+      ${occupied ? `<button class="detail-btn" data-table="${t.table_number}">View Orders</button>` : ''}
+    `;
+    container.appendChild(card);
+    
+    if (t.needs_bill) {
+      currentNeedsBillState[t.table_number] = true;
+      if (!prevNeedsBillState[t.table_number]) {
+        showToast(`Table ${t.table_number} is asking for the bill!`);
+      }
+    }
+  });
+
+  prevNeedsBillState = currentNeedsBillState;
+
+  document.getElementById('stat-occupied').textContent = totalOccupied;
+  document.getElementById('stat-orders').textContent = totalOrders;
+  document.getElementById('stat-revenue').textContent = fmt(totalRevenue);
+
+  document.querySelectorAll('.detail-btn').forEach(btn => {
+    btn.addEventListener('click', e => showTableDetail(e.currentTarget.dataset.table));
+  });
 }
 
 /* ========== Show detail for one table ========== */
 async function showTableDetail(tableNumber) {
+  tableNumber = Number(tableNumber);
+  let data = null;
   try {
     const resp = await fetch(`${API}/api/tables/${tableNumber}`);
-    const data = await resp.json();
-
-    document.getElementById('modal-title').textContent = `Table ${data.table_number} – Orders`;
-    const body = document.getElementById('modal-body');
-    body.innerHTML = '';
-
-    // Use actual schema field name: "orders" (not "active_orders")
-    const orders = data.orders || [];
-    const activeOrders = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled');
-
-    if (activeOrders.length === 0) {
-      body.innerHTML = '<div class="empty-msg">No active orders for this table.</div>';
-    } else {
-      activeOrders.forEach(order => {
-        const card = document.createElement('div');
-        card.className = 'order-card';
-
-        let itemsHtml = '';
-        (order.items || []).forEach(it => {
-          itemsHtml += `<div class="order-item-row">
-            <span>${it.quantity}× ${it.title}</span>
-            <span>${it.price}</span>
-          </div>`;
-        });
-
-        card.innerHTML = `
-          <div class="order-card-header">
-            <span class="order-id">Order ${order.id}</span>
-            <span class="order-status-pill ${order.status}">${order.status.replace('_', ' ')}</span>
-          </div>
-          ${itemsHtml}
-          <div class="order-item-row" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; margin-top:4px;">
-            <span style="font-weight:600;">Subtotal</span>
-            <span style="font-weight:600; color:#ffa502;">${fmt(order.total_amount)}</span>
-          </div>
-          <div class="order-time">Placed at: ${new Date(order.created_at).toLocaleTimeString()}</div>
-        `;
-        body.appendChild(card);
-      });
-
-      // Total bill & Clear Table button
-      const totalDiv = document.createElement('div');
-      totalDiv.className = 'modal-total';
-      totalDiv.innerHTML = `
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:12px;">
-          <span>Total Bill</span>
-          <span class="total-amount">${fmt(data.total_bill)}</span>
-        </div>
-        <button id="clear-table-btn" style="width:100%; padding:12px; background:linear-gradient(135deg, #2ed573, #27c261); color:#fff; border:none; border-radius:8px; font-weight:800; font-size:1.05rem; cursor:pointer; box-shadow: 0 4px 15px rgba(46,213,115,0.3);">
-          💰 Mark Paid & Clear Table ${tableNumber}
-        </button>
-      `;
-      body.appendChild(totalDiv);
-
-      document.getElementById('clear-table-btn').addEventListener('click', async () => {
-        const btn = document.getElementById('clear-table-btn');
-        btn.innerText = 'Clearing Table...';
-        btn.disabled = true;
-        for (let o of activeOrders) {
-          try {
-            await fetch(`${API}/api/orders/${o.id}/status?status=paid`, { method: 'PUT' });
-          } catch(e) {}
-        }
-        document.getElementById('detail-modal').style.display = 'none';
-        loadTables();
-      });
+    if (resp.ok) {
+      data = await resp.json();
     }
+  } catch (err) {}
 
-    document.getElementById('detail-modal').style.display = 'flex';
-  } catch (err) {
-    console.error('Failed to load table detail:', err);
+  if (!data || !data.table_number) {
+    const localTables = buildLocalTables();
+    data = localTables.find(t => t.table_number === tableNumber) || { table_number: tableNumber, orders: [], total_bill: 0 };
   }
+
+  document.getElementById('modal-title').textContent = `Table ${data.table_number} – Orders`;
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '';
+
+  const orders = data.orders || [];
+  const activeOrders = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled');
+
+  if (activeOrders.length === 0) {
+    body.innerHTML = '<div class="empty-msg">No active orders for this table.</div>';
+  } else {
+    activeOrders.forEach(order => {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+
+      let itemsHtml = '';
+      (order.items || []).forEach(it => {
+        itemsHtml += `<div class="order-item-row">
+          <span>${it.quantity}× ${it.title}</span>
+          <span>${it.price}</span>
+        </div>`;
+      });
+
+      card.innerHTML = `
+        <div class="order-card-header">
+          <span class="order-id">Order ${order.id}</span>
+          <span class="order-status-pill ${order.status}">${order.status.replace('_', ' ')}</span>
+        </div>
+        ${itemsHtml}
+        <div class="order-item-row" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; margin-top:4px;">
+          <span style="font-weight:600;">Subtotal</span>
+          <span style="font-weight:600; color:#ffa502;">${fmt(order.total_amount)}</span>
+        </div>
+        <div class="order-time">Placed at: ${new Date(order.created_at).toLocaleTimeString()}</div>
+      `;
+      body.appendChild(card);
+    });
+
+    const totalDiv = document.createElement('div');
+    totalDiv.className = 'modal-total';
+    totalDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:12px;">
+        <span>Total Bill</span>
+        <span class="total-amount">${fmt(data.total_bill)}</span>
+      </div>
+      <button id="clear-table-btn" style="width:100%; padding:12px; background:linear-gradient(135deg, #2ed573, #27c261); color:#fff; border:none; border-radius:8px; font-weight:800; font-size:1.05rem; cursor:pointer; box-shadow: 0 4px 15px rgba(46,213,115,0.3);">
+        💰 Mark Paid & Clear Table ${tableNumber}
+      </button>
+    `;
+    body.appendChild(totalDiv);
+
+    document.getElementById('clear-table-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('clear-table-btn');
+      btn.innerText = 'Clearing Table...';
+      btn.disabled = true;
+
+      for (let o of activeOrders) {
+        try {
+          await fetch(`${API}/api/orders/${o.id}/status?status=paid`, { method: 'PUT' });
+        } catch(e) {}
+      }
+
+      // Also clear in local storage
+      let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+      allGlobalOrders.forEach(o => {
+        if (Number(o.table_number) === tableNumber) {
+          o.status = 'paid';
+        }
+      });
+      localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
+
+      document.getElementById('detail-modal').style.display = 'none';
+      loadTables();
+    });
+  }
+
+  document.getElementById('detail-modal').style.display = 'flex';
 }
 
 /* ========== Modal close ========== */

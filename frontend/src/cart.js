@@ -425,6 +425,19 @@ const initCart = () => {
                     });
                     if (!response.ok) throw new Error('Backend HTTP error');
                     const data = await response.json();
+                    
+                    const orderRecord = {
+                        id: data.id || ('QD-' + Math.floor(100000 + Math.random() * 900000)),
+                        table_number: currentTable,
+                        items: orderedItems,
+                        total_amount: totalAmount,
+                        status: 'pending',
+                        created_at: new Date().toISOString()
+                    };
+                    let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+                    allGlobalOrders.push(orderRecord);
+                    localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
+
                     placedOrders.push(...orderedItems);
                     localStorage.setItem('quickdine_placed_orders', JSON.stringify(placedOrders));
                     cart = [];
@@ -434,6 +447,19 @@ const initCart = () => {
                 } catch (error) {
                     console.warn("Backend API unreachable, placing order locally:", error);
                     const fallbackOrderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
+                    
+                    const orderRecord = {
+                        id: fallbackOrderId,
+                        table_number: currentTable,
+                        items: orderedItems,
+                        total_amount: totalAmount,
+                        status: 'pending',
+                        created_at: new Date().toISOString()
+                    };
+                    let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+                    allGlobalOrders.push(orderRecord);
+                    localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
+
                     placedOrders.push(...orderedItems);
                     localStorage.setItem('quickdine_placed_orders', JSON.stringify(placedOrders));
                     cart = [];
