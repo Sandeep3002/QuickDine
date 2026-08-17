@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: "Golden fried vegetable dumplings tossed in a savory garlic-soy sauce with fresh spring onions.",
             price: "₹240",
             category: "chinese",
-            img: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80"
+            img: "/crispy_manchurian.png"
         },
         {
             title: "Steamed Chicken Momos",
