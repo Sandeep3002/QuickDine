@@ -354,9 +354,9 @@ function showToast(message) {
   }, 6000);
 }
 
-const fetchWithTimeout = (url, timeoutMs = 1500) => {
+const fetchWithTimeout = (url, timeoutMs = 1500, options = {}) => {
   return Promise.race([
-    fetch(url),
+    fetch(url, options),
     new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), timeoutMs))
   ]);
 };
@@ -594,14 +594,24 @@ async function showTableDetail(tableNumber) {
       btn.innerText = 'Clearing Table...';
       btn.disabled = true;
 
-      // 1. Delete/Clear from Cloud API (CrudCrud)
-      for (let o of activeOrders) {
-        if (o._cloudId) {
-          try {
-            await fetchWithTimeout(`${CLOUD_API_URL}/${o._cloudId}`, 1500, { method: 'DELETE' });
-          } catch(e) {}
+      // 1. Sweep and Delete all cloud records matching this table from CrudCrud
+      try {
+        const cloudResp = await fetchWithTimeout(CLOUD_API_URL, 2000);
+        if (cloudResp.ok) {
+          const cloudOrders = await cloudResp.json();
+          if (Array.isArray(cloudOrders)) {
+            for (let co of cloudOrders) {
+              const rawNum = co.table_number || co.table || '1';
+              const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+              if (tNum === tableNumber && co._id) {
+                try {
+                  await fetchWithTimeout(`${CLOUD_API_URL}/${co._id}`, 2000, { method: 'DELETE' });
+                } catch(e) {}
+              }
+            }
+          }
         }
-      }
+      } catch(e) {}
 
       // 2. Clear from Local Backend API if running locally
       const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -620,7 +630,7 @@ async function showTableDetail(tableNumber) {
 
       // 4. Close modal & reload UI immediately
       document.getElementById('detail-modal').style.display = 'none';
-      loadTables();
+      await loadTables();
     });
   }
 
