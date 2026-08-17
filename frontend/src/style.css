@@ -40,15 +40,16 @@ body {
 
 .glass-header {
   position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 20px 50px;
+  padding: 18px 40px;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 20px;
 }
 
 .logo {
@@ -56,6 +57,7 @@ body {
   font-weight: 800;
   color: var(--text-light);
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 .logo span {
@@ -64,15 +66,17 @@ body {
 
 nav {
   display: flex;
-  gap: 35px;
+  gap: 30px;
+  align-items: center;
 }
 
 nav a {
   color: var(--text-light);
   text-decoration: none;
   font-weight: 400;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
 nav a:hover {
@@ -248,20 +252,20 @@ nav a:hover {
   align-items: center;
 }
 
-/* Modal Styles */
+/* Modals */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
   opacity: 1;
   transition: opacity 0.3s ease;
 }
@@ -272,26 +276,24 @@ nav a:hover {
 }
 
 .modal-content {
-  background: var(--bg-color);
-  padding: 40px;
-  border-radius: 20px;
-  width: 90%;
-  max-width: 450px;
+  background: #141620;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-  transform: translateY(0);
+  padding: 40px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  transform: scale(1);
   transition: transform 0.3s ease;
 }
 
 .modal-overlay.hidden .modal-content {
-  transform: translateY(30px);
+  transform: scale(0.95);
 }
 
 .modal-content h2 {
-  margin-top: 0;
   font-size: 2rem;
-  color: var(--text-light);
-  margin-bottom: 5px;
+  margin-top: 0;
 }
 
 #booking-form {
@@ -363,3 +365,152 @@ nav a:hover {
   border-color: var(--primary) !important;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Mobile Responsive Media Queries (Phones & Small Screens < 768px)
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .glass-header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .logo {
+    font-size: 1.35rem;
+  }
+
+  .header-cart {
+    order: 2;
+  }
+
+  nav {
+    order: 3;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 2px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  nav a {
+    font-size: 0.85rem;
+    padding: 4px 6px;
+  }
+
+  .hero-content {
+    padding: 25px 14px 50px;
+  }
+
+  .hero-content h1 {
+    font-size: 2.5rem;
+    line-height: 1.15;
+  }
+
+  .hero-content p {
+    font-size: 1rem;
+    margin: 15px 0 25px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .cta-btn {
+    width: 100%;
+    padding: 12px 18px;
+  }
+
+  .large {
+    font-size: 1rem;
+    padding: 12px 18px;
+  }
+
+  .menu-header {
+    padding: 25px 14px 15px !important;
+  }
+
+  .menu-header h1 {
+    font-size: 2.2rem !important;
+  }
+
+  .menu-header p {
+    font-size: 0.95rem !important;
+  }
+
+  .category-filters {
+    gap: 6px !important;
+  }
+
+  .filter-btn {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .features {
+    padding: 25px 14px 90px !important;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+  }
+
+  .cards-container {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .card-content {
+    padding: 18px;
+  }
+
+  .card-title {
+    font-size: 1.35rem;
+  }
+
+  .price {
+    font-size: 1.35rem;
+  }
+
+  .page-container {
+    padding: 15px 10px 90px !important;
+  }
+
+  .booking-box, .contact-box {
+    padding: 20px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .booking-box h1, .contact-box h1 {
+    font-size: 1.8rem !important;
+  }
+
+  #booking-form > div, #contact-form > div {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  #header-table-badge {
+    bottom: 12px !important;
+    left: 12px !important;
+    padding: 6px 14px !important;
+    font-size: 0.8rem !important;
+    z-index: 1500 !important;
+  }
+
+  .modal-content {
+    padding: 20px 14px !important;
+    max-width: 95% !important;
+    border-radius: 18px !important;
+  }
+}
