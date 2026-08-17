@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickDine – Kitchen / Owner Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .dashboard-header {
+      background: linear-gradient(135deg, #1a1d2e 0%, #12141f 100%);
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .dashboard-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff6b6b, #ffa502);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(46, 213, 115, 0.1);
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: #2ed573;
+      font-weight: 600;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: #2ed573;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    .dashboard-body { padding: 1.5rem 2rem; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #1e2235, #1a1d2e);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      text-align: center;
+    }
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffa502;
+    }
+    .stat-card .stat-label {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 4px;
+    }
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .table-card {
+      background: linear-gradient(135deg, #1e2235, #1a1d2e);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1.2rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .table-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+    .table-card.occupied { border-left: 4px solid #ff6b6b; }
+    .table-card.free { border-left: 4px solid #2ed573; }
+    .table-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+    .table-card-header .table-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .status-pill {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-pill.busy {
+      background: rgba(255,107,107,0.15);
+      color: #ff6b6b;
+      border: 1px solid rgba(255,107,107,0.3);
+    }
+    .status-pill.free-pill {
+      background: rgba(46,213,115,0.15);
+      color: #2ed573;
+      border: 1px solid rgba(46,213,115,0.3);
+    }
+    .table-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+    .table-info .amount { color: #ffa502; font-weight: 600; }
+    .detail-btn {
+      width: 100%;
+      margin-top: 0.6rem;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .detail-btn:hover { opacity: 0.85; }
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-box {
+      background: #1a1d2e;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      max-width: 650px;
+      width: 92%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.8rem;
+      animation: slideUp 0.25s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .modal-header h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .close-modal {
+      background: rgba(255,255,255,0.08);
+      border: none;
+      color: #aaa;
+      font-size: 1.3rem;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .close-modal:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .order-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.8rem;
+    }
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .order-id { font-weight: 600; color: #ffa502; font-size: 0.95rem; }
+    .order-status-pill {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .order-status-pill.pending { background: rgba(255,165,2,0.15); color: #ffa502; }
+    .order-status-pill.preparing { background: rgba(52,152,219,0.15); color: #3498db; }
+    .order-status-pill.ready_for_waiter { background: rgba(46,213,115,0.15); color: #2ed573; }
+    .order-status-pill.served { background: rgba(149,165,166,0.15); color: #95a5a6; }
+    .order-status-pill.bill_requested { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); animation: pulse 1.5s infinite; }
+    .order-item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 0.88rem;
+      color: #ccc;
+    }
+    .order-time { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
+    .modal-total {
+      margin-top: 1rem;
+      padding-top: 0.8rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .modal-total .total-amount { color: #2ed573; }
+    .empty-msg {
+      text-align: center;
+      color: #666;
+      padding: 2rem 0;
+      font-size: 0.95rem;
+    }
+    /* Toast Notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+    }
+    .toast {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      transform: translateX(100%);
+    }
+    .toast.hide {
+      animation: fadeOutRight 0.3s ease forwards;
+    }
+    @keyframes slideInRight {
+      to { transform: translateX(0); }
+    }
+    @keyframes fadeOutRight {
+      to { opacity: 0; transform: translateX(100%); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="dashboard-header">
+  <h1>🍽️ QuickDine Kitchen Dashboard</h1>
+  <div class="live-badge"><div class="live-dot"></div> Live – Auto Refreshing</div>
+</div>
+
+<div class="dashboard-body">
+  <!-- Summary stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-occupied">0</div>
+      <div class="stat-label">Tables Occupied</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-orders">0</div>
+      <div class="stat-label">Active Orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-revenue">₹0</div>
+      <div class="stat-label">Pending Revenue</div>
+    </div>
+  </div>
+
+  <!-- Table grid -->
+  <div id="tables" class="tables-grid"></div>
+</div>
+
+<!-- Detail modal -->
+<div id="detail-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title">Table Details</h2>
+      <button class="close-modal" aria-label="Close">&times;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script>
+const API = `http://${window.location.hostname}:8000`;
+const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
+
+function fmt(num) { return `₹${Number(num).toLocaleString()}`; }
+
+/* ========== Toast Notification Logic ========== */
+let prevNeedsBillState = {};
+
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span>🔔</span> <span>${message}</span>`;
+  container.appendChild(toast);
+  
+  // Play sound
+  const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+  audio.play().catch(e => console.log('Audio blocked by browser', e));
+
+  setTimeout(() => {
+    toast.classList.add('hide');
+    setTimeout(() => toast.remove(), 300);
+  }, 6000);
+}
+
+const fetchWithTimeout = (url, timeoutMs = 1500) => {
+  return Promise.race([
+    fetch(url),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), timeoutMs))
+  ]);
+};
+
+async function buildLocalTables() {
+  let tablesMap = new Map();
+  
+  // 1. Initialize default 10 tables (1 to 10)
+  for (let i = 1; i <= 10; i++) {
+    tablesMap.set(i, {
+      table_number: i,
+      is_occupied: false,
+      active_order_count: 0,
+      total_unpaid_amount: 0,
+      needs_bill: false,
+      orders: [],
+      total_bill: 0
+    });
+  }
+
+  let allOrdersMap = new Map();
+
+  // 2. Read Local Storage orders synchronously (Instant)
+  try {
+    const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+    localOrders.forEach(o => {
+      if (o && o.status !== 'paid' && o.status !== 'cancelled') {
+        const id = o.id || o._id || Math.random();
+        allOrdersMap.set(id, o);
+      }
+    });
+  } catch(e) {}
+
+  // 3. Fetch Cloud API orders (with 1.5s max timeout to prevent page freeze)
+  try {
+    const cloudResp = await fetchWithTimeout(CLOUD_API_URL, 1500);
+    if (cloudResp.ok) {
+      const cloudOrders = await cloudResp.json();
+      if (Array.isArray(cloudOrders)) {
+        cloudOrders.forEach(co => {
+          if (co && co.status !== 'paid' && co.status !== 'cancelled') {
+            const rawNum = co.table_number || co.table || '1';
+            const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+            const id = co.id || co._id || ('QD-' + Math.floor(Math.random() * 900000));
+            allOrdersMap.set(id, {
+              id: id,
+              table_number: tNum,
+              items: co.items || [{ title: 'Placed Order', price: '₹' + (co.total_amount || 0), quantity: 1 }],
+              total_amount: Number(co.total_amount || 0),
+              status: co.status || 'pending',
+              created_at: co.created_at || new Date().toISOString(),
+              needs_bill: co.needs_bill || co.status === 'bill_requested',
+              _cloudId: co._id
+            });
+          }
+        });
+      }
+    }
+  } catch(e) {
+    console.warn("Cloud sync network timeout/offline mode active");
+  }
+
+  // 4. Fetch Local Backend API (only if running locally on localhost)
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isLocalHost) {
+    try {
+      const resp = await fetchWithTimeout(`http://${window.location.hostname}:8000/api/tables`, 1000);
+      if (resp.ok) {
+        const backendTables = await resp.json();
+        if (Array.isArray(backendTables)) {
+          backendTables.forEach(bt => {
+            if (bt.table_number && tablesMap.has(Number(bt.table_number))) {
+              tablesMap.set(Number(bt.table_number), bt);
+            }
+          });
+        }
+      }
+    } catch(e) {}
+  }
+
+  // Populate tables with aggregated orders from local & cloud
+  const activeOrders = Array.from(allOrdersMap.values());
+  activeOrders.forEach(order => {
+    const rawNum = order.table_number || order.table || '1';
+    const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+    if (tNum >= 1 && tNum <= 10) {
+      const tableData = tablesMap.get(tNum);
+      if (tableData) {
+        tableData.orders.push(order);
+        tableData.is_occupied = true;
+        tableData.active_order_count += 1;
+        tableData.total_unpaid_amount += Number(order.total_amount || 0);
+        tableData.total_bill += Number(order.total_amount || 0);
+        if (order.status === 'bill_requested' || order.needs_bill) {
+          tableData.needs_bill = true;
+        }
+      }
+    }
+  });
+
+  return Array.from(tablesMap.values());
+}
+
+function renderTablesUI(tables) {
+  const container = document.getElementById('tables');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let totalOccupied = 0, totalOrders = 0, totalRevenue = 0;
+  let currentNeedsBillState = {};
+
+  tables.forEach(t => {
+    const occupied = t.is_occupied;
+    const orderCount = t.active_order_count;
+    const unpaid = t.total_unpaid_amount;
+
+    if (occupied) totalOccupied++;
+    totalOrders += orderCount;
+    totalRevenue += unpaid;
+
+    const card = document.createElement('div');
+    card.className = `table-card ${occupied ? 'occupied' : 'free'}`;
+    card.innerHTML = `
+      <div class="table-card-header">
+        <span class="table-name">🪑 Table ${t.table_number}</span>
+        <div>
+          ${t.needs_bill ? '<span class="status-pill" style="background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.4); margin-right: 5px; animation: pulse 1s infinite;">🧾 BILL REQUESTED</span>' : ''}
+          <span class="status-pill ${occupied ? 'busy' : 'free-pill'}">${occupied ? 'Occupied' : 'Free'}</span>
+        </div>
+      </div>
+      <div class="table-info">
+        <span>Active orders: <b>${orderCount}</b></span>
+        <span class="amount">${fmt(unpaid)}</span>
+      </div>
+      ${occupied ? `<button class="detail-btn" data-table="${t.table_number}">View Orders</button>` : ''}
+    `;
+    container.appendChild(card);
+    
+    if (t.needs_bill) {
+      currentNeedsBillState[t.table_number] = true;
+      if (!prevNeedsBillState[t.table_number]) {
+        showToast(`Table ${t.table_number} is asking for the bill!`);
+      }
+    }
+  });
+
+  prevNeedsBillState = currentNeedsBillState;
+
+  document.getElementById('stat-occupied').textContent = totalOccupied;
+  document.getElementById('stat-orders').textContent = totalOrders;
+  document.getElementById('stat-revenue').textContent = fmt(totalRevenue);
+
+  document.querySelectorAll('.detail-btn').forEach(btn => {
+    btn.addEventListener('click', e => showTableDetail(e.currentTarget.dataset.table));
+  });
+}
+
+/* ========== Load all tables ========== */
+async function loadTables() {
+  const tables = await buildLocalTables();
+  renderTablesUI(tables);
+}
+
+/* ========== Show detail for one table ========== */
+async function showTableDetail(tableNumber) {
+  tableNumber = Number(tableNumber);
+  let data = null;
+  try {
+    const resp = await fetch(`${API}/api/tables/${tableNumber}`);
+    if (resp.ok) {
+      data = await resp.json();
+    }
+  } catch (err) {}
+
+  if (!data || !data.table_number) {
+    const localTables = await buildLocalTables();
+    data = localTables.find(t => t.table_number === tableNumber) || { table_number: tableNumber, orders: [], total_bill: 0 };
+  }
+
+  document.getElementById('modal-title').textContent = `Table ${data.table_number} – Orders`;
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '';
+
+  const orders = data.orders || [];
+  const activeOrders = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled');
+
+  if (activeOrders.length === 0) {
+    body.innerHTML = '<div class="empty-msg">No active orders for this table.</div>';
+  } else {
+    activeOrders.forEach(order => {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+
+      let itemsHtml = '';
+      (order.items || []).forEach(it => {
+        itemsHtml += `<div class="order-item-row">
+          <span>${it.quantity}× ${it.title}</span>
+          <span>${it.price}</span>
+        </div>`;
+      });
+
+      card.innerHTML = `
+        <div class="order-card-header">
+          <span class="order-id">Order ${order.id}</span>
+          <span class="order-status-pill ${order.status}">${order.status.replace('_', ' ')}</span>
+        </div>
+        ${itemsHtml}
+        <div class="order-item-row" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; margin-top:4px;">
+          <span style="font-weight:600;">Subtotal</span>
+          <span style="font-weight:600; color:#ffa502;">${fmt(order.total_amount)}</span>
+        </div>
+        <div class="order-time">Placed at: ${new Date(order.created_at).toLocaleTimeString()}</div>
+      `;
+      body.appendChild(card);
+    });
+
+    const totalDiv = document.createElement('div');
+    totalDiv.className = 'modal-total';
+    totalDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:12px;">
+        <span>Total Bill</span>
+        <span class="total-amount">${fmt(data.total_bill)}</span>
+      </div>
+      <button id="clear-table-btn" style="width:100%; padding:12px; background:linear-gradient(135deg, #2ed573, #27c261); color:#fff; border:none; border-radius:8px; font-weight:800; font-size:1.05rem; cursor:pointer; box-shadow: 0 4px 15px rgba(46,213,115,0.3);">
+        💰 Mark Paid & Clear Table ${tableNumber}
+      </button>
+    `;
+    body.appendChild(totalDiv);
+
+    document.getElementById('clear-table-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('clear-table-btn');
+      btn.innerText = 'Clearing Table...';
+      btn.disabled = true;
+
+      for (let o of activeOrders) {
+        try {
+          await fetch(`${API}/api/orders/${o.id}/status?status=paid`, { method: 'PUT' });
+        } catch(e) {}
+      }
+
+      // Also clear in local storage
+      let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+      allGlobalOrders.forEach(o => {
+        if (Number(o.table_number) === tableNumber) {
+          o.status = 'paid';
+        }
+      });
+      localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
+
+      document.getElementById('detail-modal').style.display = 'none';
+      loadTables();
+    });
+  }
+
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/* ========== Modal close ========== */
+document.querySelector('.close-modal').addEventListener('click', () => {
+  document.getElementById('detail-modal').style.display = 'none';
+});
+window.addEventListener('click', e => {
+  if (e.target.id === 'detail-modal') e.target.style.display = 'none';
+});
+
+/* ========== Auto-refresh every 4 seconds ========== */
+const defaultTables = [];
+for (let i = 1; i <= 10; i++) {
+  defaultTables.push({
+    table_number: i,
+    is_occupied: false,
+    active_order_count: 0,
+    total_unpaid_amount: 0,
+    needs_bill: false,
+    orders: [],
+    total_bill: 0
+  });
+}
+renderTablesUI(defaultTables);
+
+loadTables();
+setInterval(loadTables, 4000);
+</script>
+
+</body>
+</html>
