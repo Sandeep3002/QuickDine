@@ -19,7 +19,7 @@ const initCart = () => {
         : `http://${window.location.hostname}:${BACKEND_PORT}`;
     
     // Cloud API for instant cross-device order sync (Mobile Phone <-> Owner Laptop)
-    const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
+    const CLOUD_API_URL = 'https://crudcrud.com/api/0248b791129540a18a4b94824e160c04/orders';
     // ─────────────────────────────────────────────────────────────────────────
 
     // Detect Table Number from URL query parameter (e.g. ?table=5) or localStorage
