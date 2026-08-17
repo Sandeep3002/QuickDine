@@ -524,12 +524,15 @@ async function loadTables() {
 async function showTableDetail(tableNumber) {
   tableNumber = Number(tableNumber);
   let data = null;
-  try {
-    const resp = await fetch(`${API}/api/tables/${tableNumber}`);
-    if (resp.ok) {
-      data = await resp.json();
-    }
-  } catch (err) {}
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isLocalHost) {
+    try {
+      const resp = await fetchWithTimeout(`http://${window.location.hostname}:8000/api/tables/${tableNumber}`, 1000);
+      if (resp.ok) {
+        data = await resp.json();
+      }
+    } catch (err) {}
+  }
 
   if (!data || !data.table_number) {
     const localTables = await buildLocalTables();
@@ -591,21 +594,31 @@ async function showTableDetail(tableNumber) {
       btn.innerText = 'Clearing Table...';
       btn.disabled = true;
 
+      // 1. Delete/Clear from Cloud API (CrudCrud)
       for (let o of activeOrders) {
-        try {
-          await fetch(`${API}/api/orders/${o.id}/status?status=paid`, { method: 'PUT' });
-        } catch(e) {}
+        if (o._cloudId) {
+          try {
+            await fetchWithTimeout(`${CLOUD_API_URL}/${o._cloudId}`, 1500, { method: 'DELETE' });
+          } catch(e) {}
+        }
       }
 
-      // Also clear in local storage
-      let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-      allGlobalOrders.forEach(o => {
-        if (Number(o.table_number) === tableNumber) {
-          o.status = 'paid';
+      // 2. Clear from Local Backend API if running locally
+      const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (isLocalHost) {
+        for (let o of activeOrders) {
+          try {
+            await fetchWithTimeout(`http://${window.location.hostname}:8000/api/orders/${o.id}/status?status=paid`, 1000, { method: 'PUT' });
+          } catch(e) {}
         }
-      });
+      }
+
+      // 3. Clear from local storage
+      let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+      allGlobalOrders = allGlobalOrders.filter(o => Number(o.table_number || o.table) !== tableNumber);
       localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
 
+      // 4. Close modal & reload UI immediately
       document.getElementById('detail-modal').style.display = 'none';
       loadTables();
     });
