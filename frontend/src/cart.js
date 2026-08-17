@@ -192,10 +192,25 @@ const initCart = () => {
         let liveOrders = [];
         try {
             const res = await fetch(`${API_BASE}/api/orders`);
+            if (!res.ok) throw new Error('Backend HTTP error');
             const data = await res.json();
             liveOrders = data.filter(o => o.table_number.toString() === currentTable.toString() && o.status !== 'paid');
         } catch (err) {
-            console.error('Failed to fetch live orders', err);
+            console.warn('Backend API offline, using local placed orders fallback');
+            if (placedOrders.length > 0) {
+                let totalAmount = 0;
+                placedOrders.forEach(item => {
+                    const price = parseInt(item.price.replace(/[^0-9]/g, ''));
+                    totalAmount += price * item.quantity;
+                });
+                liveOrders = [{
+                    id: 'QD-LOCAL',
+                    table_number: currentTable,
+                    items: placedOrders,
+                    total_amount: totalAmount,
+                    status: 'preparing'
+                }];
+            }
         }
 
         // Dynamic modal width based on split layout
