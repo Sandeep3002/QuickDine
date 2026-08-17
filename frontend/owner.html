@@ -355,68 +355,98 @@ function showToast(message) {
 }
 
 async function buildLocalTables() {
-  let ordersMap = new Map();
+  let tablesMap = new Map();
+  
+  // 1. Initialize default 10 tables (1 to 10)
+  for (let i = 1; i <= 10; i++) {
+    tablesMap.set(i, {
+      table_number: i,
+      is_occupied: false,
+      active_order_count: 0,
+      total_unpaid_amount: 0,
+      needs_bill: false,
+      orders: [],
+      total_bill: 0
+    });
+  }
 
-  // 1. Local Storage
-  const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-  localOrders.forEach(o => ordersMap.set(o.id || o._id, o));
+  let allOrdersMap = new Map();
 
-  // 2. Cloud API (Cross-Device)
+  // 2. Read Local Storage orders
+  try {
+    const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+    localOrders.forEach(o => {
+      if (o && o.status !== 'paid' && o.status !== 'cancelled') {
+        const id = o.id || o._id || Math.random();
+        allOrdersMap.set(id, o);
+      }
+    });
+  } catch(e) {}
+
+  // 3. Fetch Cloud API orders (Cross-Device)
   try {
     const cloudResp = await fetch(CLOUD_API_URL);
     if (cloudResp.ok) {
       const cloudOrders = await cloudResp.json();
       cloudOrders.forEach(co => {
-        const oid = co.id || co._id;
-        ordersMap.set(oid, {
-          id: oid,
-          table_number: Number(co.table_number),
-          items: co.items || [],
-          total_amount: Number(co.total_amount || 0),
-          status: co.status || 'pending',
-          created_at: co.created_at || new Date().toISOString(),
-          _cloudId: co._id
-        });
+        if (co && co.status !== 'paid' && co.status !== 'cancelled') {
+          const id = co.id || co._id;
+          allOrdersMap.set(id, {
+            id: id,
+            table_number: Number(co.table_number),
+            items: co.items || [],
+            total_amount: Number(co.total_amount || 0),
+            status: co.status || 'pending',
+            created_at: co.created_at || new Date().toISOString(),
+            needs_bill: co.needs_bill || co.status === 'bill_requested',
+            _cloudId: co._id
+          });
+        }
       });
     }
-  } catch (e) {}
+  } catch(e) {}
 
-  const allOrders = Array.from(ordersMap.values());
-  const tableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  return tableNumbers.map(num => {
-    const tableOrders = allOrders.filter(o => Number(o.table_number) === num && o.status !== 'paid' && o.status !== 'cancelled');
-    let total_unpaid_amount = 0;
-    let needs_bill = false;
-    tableOrders.forEach(o => {
-      total_unpaid_amount += Number(o.total_amount || 0);
-      if (o.status === 'bill_requested' || o.needs_bill) needs_bill = true;
-    });
+  // 4. Fetch Local Backend API (only if running locally on localhost)
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isLocalHost) {
+    try {
+      const resp = await fetch(`http://${window.location.hostname}:8000/api/tables`);
+      if (resp.ok) {
+        const backendTables = await resp.json();
+        backendTables.forEach(bt => {
+          if (bt.table_number && tablesMap.has(Number(bt.table_number))) {
+            tablesMap.set(Number(bt.table_number), bt);
+          }
+        });
+      }
+    } catch(e) {}
+  }
 
-    return {
-      table_number: num,
-      is_occupied: tableOrders.length > 0,
-      active_order_count: tableOrders.length,
-      total_unpaid_amount: total_unpaid_amount,
-      needs_bill: needs_bill,
-      orders: tableOrders,
-      total_bill: total_unpaid_amount
-    };
+  // Populate tables with aggregated orders from local & cloud
+  const activeOrders = Array.from(allOrdersMap.values());
+  activeOrders.forEach(order => {
+    const tNum = Number(order.table_number);
+    if (tNum >= 1 && tNum <= 10) {
+      const tableData = tablesMap.get(tNum);
+      if (tableData) {
+        tableData.orders.push(order);
+        tableData.is_occupied = true;
+        tableData.active_order_count += 1;
+        tableData.total_unpaid_amount += Number(order.total_amount || 0);
+        tableData.total_bill += Number(order.total_amount || 0);
+        if (order.status === 'bill_requested' || order.needs_bill) {
+          tableData.needs_bill = true;
+        }
+      }
+    }
   });
+
+  return Array.from(tablesMap.values());
 }
 
 /* ========== Load all tables ========== */
 async function loadTables() {
-  let tables = [];
-  try {
-    const resp = await fetch(`${API}/api/tables`);
-    if (resp.ok) {
-      tables = await resp.json();
-    } else {
-      tables = await buildLocalTables();
-    }
-  } catch (err) {
-    tables = await buildLocalTables();
-  }
+  const tables = await buildLocalTables();
 
   const container = document.getElementById('tables');
   container.innerHTML = '';
