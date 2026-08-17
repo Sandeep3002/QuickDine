@@ -429,9 +429,10 @@ const initCart = () => {
                     if (!response.ok) throw new Error('Backend HTTP error');
                     const data = await response.json();
                     
+                    const cleanTableNum = parseInt((currentTable || '1').toString().replace(/[^0-9]/g, ''), 10) || 1;
                     const orderRecord = {
                         id: data.id || ('QD-' + Math.floor(100000 + Math.random() * 900000)),
-                        table_number: parseInt(currentTable),
+                        table_number: cleanTableNum,
                         items: orderedItems,
                         total_amount: totalAmount,
                         status: 'pending',
@@ -457,10 +458,11 @@ const initCart = () => {
                 } catch (error) {
                     console.warn("Backend API unreachable, placing order locally and cloud syncing:", error);
                     const fallbackOrderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
-                    
+                    const cleanTableNum = parseInt((currentTable || '1').toString().replace(/[^0-9]/g, ''), 10) || 1;
+
                     const orderRecord = {
                         id: fallbackOrderId,
-                        table_number: parseInt(currentTable),
+                        table_number: cleanTableNum,
                         items: orderedItems,
                         total_amount: totalAmount,
                         status: 'pending',

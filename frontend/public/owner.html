@@ -372,6 +372,12 @@ async function buildLocalTables() {
 
   let allOrdersMap = new Map();
 
+  const parseTableNum = (val) => {
+    if (!val) return 0;
+    const clean = val.toString().replace(/[^0-9]/g, '');
+    return parseInt(clean, 10) || 0;
+  };
+
   // 2. Read Local Storage orders
   try {
     const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
@@ -388,21 +394,23 @@ async function buildLocalTables() {
     const cloudResp = await fetch(CLOUD_API_URL);
     if (cloudResp.ok) {
       const cloudOrders = await cloudResp.json();
-      cloudOrders.forEach(co => {
-        if (co && co.status !== 'paid' && co.status !== 'cancelled') {
-          const id = co.id || co._id;
-          allOrdersMap.set(id, {
-            id: id,
-            table_number: Number(co.table_number),
-            items: co.items || [],
-            total_amount: Number(co.total_amount || 0),
-            status: co.status || 'pending',
-            created_at: co.created_at || new Date().toISOString(),
-            needs_bill: co.needs_bill || co.status === 'bill_requested',
-            _cloudId: co._id
-          });
-        }
-      });
+      if (Array.isArray(cloudOrders)) {
+        cloudOrders.forEach(co => {
+          if (co && co.status !== 'paid' && co.status !== 'cancelled') {
+            const id = co.id || co._id;
+            allOrdersMap.set(id, {
+              id: id,
+              table_number: parseTableNum(co.table_number || co.table),
+              items: co.items || [{ title: 'Ordered Dishes', price: '₹' + (co.total_amount || 0), quantity: 1 }],
+              total_amount: Number(co.total_amount || 0),
+              status: co.status || 'pending',
+              created_at: co.created_at || new Date().toISOString(),
+              needs_bill: co.needs_bill || co.status === 'bill_requested',
+              _cloudId: co._id
+            });
+          }
+        });
+      }
     }
   } catch(e) {}
 
@@ -413,11 +421,14 @@ async function buildLocalTables() {
       const resp = await fetch(`http://${window.location.hostname}:8000/api/tables`);
       if (resp.ok) {
         const backendTables = await resp.json();
-        backendTables.forEach(bt => {
-          if (bt.table_number && tablesMap.has(Number(bt.table_number))) {
-            tablesMap.set(Number(bt.table_number), bt);
-          }
-        });
+        if (Array.isArray(backendTables)) {
+          backendTables.forEach(bt => {
+            const tNum = parseTableNum(bt.table_number);
+            if (tNum >= 1 && tNum <= 10) {
+              tablesMap.set(tNum, bt);
+            }
+          });
+        }
       }
     } catch(e) {}
   }
@@ -425,7 +436,7 @@ async function buildLocalTables() {
   // Populate tables with aggregated orders from local & cloud
   const activeOrders = Array.from(allOrdersMap.values());
   activeOrders.forEach(order => {
-    const tNum = Number(order.table_number);
+    const tNum = parseTableNum(order.table_number || order.table);
     if (tNum >= 1 && tNum <= 10) {
       const tableData = tablesMap.get(tNum);
       if (tableData) {
