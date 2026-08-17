@@ -19,7 +19,7 @@ const initCart = () => {
         : `http://${window.location.hostname}:${BACKEND_PORT}`;
     
     // Cloud API for instant cross-device order sync (Mobile Phone <-> Owner Laptop)
-    const CLOUD_API_URL = 'https://crudcrud.com/api/0248b791129540a18a4b94824e160c04/orders';
+    const CLOUD_API_URL = 'https://crudcrud.com/api/2eab727548f24ee3b4e8ffe3d8f78eca/orders';
 
     const fetchWithTimeout = (url, timeoutMs = 2000, options = {}) => {
         return Promise.race([
