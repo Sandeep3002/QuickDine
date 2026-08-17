@@ -101,13 +101,19 @@
 <div class="qr-grid" id="qr-grid"></div>
 
 <script>
-  const LAN_IP = '192.168.1.11';
-  const PORT = window.location.port || '5173';
-  const HOST = ['localhost', '127.0.0.1'].includes(window.location.hostname) ? LAN_IP : window.location.hostname;
+  const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  let SITE_BASE;
+  if (isLocal) {
+    const LAN_IP = '192.168.1.11';
+    const PORT = window.location.port ? `:${window.location.port}` : ':5173';
+    SITE_BASE = `http://${LAN_IP}${PORT}`;
+  } else {
+    SITE_BASE = window.location.origin;
+  }
   const grid = document.getElementById('qr-grid');
 
   for (let i = 1; i <= 10; i++) {
-    const targetUrl = `http://${HOST}:${PORT}/menu.html?table=${i}`;
+    const targetUrl = `${SITE_BASE}/menu.html?table=${i}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(targetUrl)}`;
     
     const card = document.createElement('div');
