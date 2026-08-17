@@ -330,6 +330,7 @@
 
 <script>
 const API = `http://${window.location.hostname}:8000`;
+const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
 
 function fmt(num) { return `₹${Number(num).toLocaleString()}`; }
 
@@ -353,11 +354,37 @@ function showToast(message) {
   }, 6000);
 }
 
-function buildLocalTables() {
-  const allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+async function buildLocalTables() {
+  let ordersMap = new Map();
+
+  // 1. Local Storage
+  const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+  localOrders.forEach(o => ordersMap.set(o.id || o._id, o));
+
+  // 2. Cloud API (Cross-Device)
+  try {
+    const cloudResp = await fetch(CLOUD_API_URL);
+    if (cloudResp.ok) {
+      const cloudOrders = await cloudResp.json();
+      cloudOrders.forEach(co => {
+        const oid = co.id || co._id;
+        ordersMap.set(oid, {
+          id: oid,
+          table_number: Number(co.table_number),
+          items: co.items || [],
+          total_amount: Number(co.total_amount || 0),
+          status: co.status || 'pending',
+          created_at: co.created_at || new Date().toISOString(),
+          _cloudId: co._id
+        });
+      });
+    }
+  } catch (e) {}
+
+  const allOrders = Array.from(ordersMap.values());
   const tableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   return tableNumbers.map(num => {
-    const tableOrders = allGlobalOrders.filter(o => Number(o.table_number) === num && o.status !== 'paid' && o.status !== 'cancelled');
+    const tableOrders = allOrders.filter(o => Number(o.table_number) === num && o.status !== 'paid' && o.status !== 'cancelled');
     let total_unpaid_amount = 0;
     let needs_bill = false;
     tableOrders.forEach(o => {
@@ -385,10 +412,10 @@ async function loadTables() {
     if (resp.ok) {
       tables = await resp.json();
     } else {
-      tables = buildLocalTables();
+      tables = await buildLocalTables();
     }
   } catch (err) {
-    tables = buildLocalTables();
+    tables = await buildLocalTables();
   }
 
   const container = document.getElementById('tables');
@@ -455,7 +482,7 @@ async function showTableDetail(tableNumber) {
   } catch (err) {}
 
   if (!data || !data.table_number) {
-    const localTables = buildLocalTables();
+    const localTables = await buildLocalTables();
     data = localTables.find(t => t.table_number === tableNumber) || { table_number: tableNumber, orders: [], total_bill: 0 };
   }
 

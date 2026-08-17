@@ -31,33 +31,61 @@
 
     <script>
         const API_URL = `http://${window.location.hostname}:8000/api/orders`;
+        const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
 
         async function fetchOrders() {
-            let orders = [];
+            let ordersMap = new Map();
+
+            // 1. Try Local Storage
+            const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+            localOrders.forEach(o => ordersMap.set(o.id || o._id, o));
+
+            // 2. Try Cloud Sync API (cross-device)
+            try {
+                const cloudResp = await fetch(CLOUD_API_URL);
+                if (cloudResp.ok) {
+                    const cloudOrders = await cloudResp.json();
+                    cloudOrders.forEach(co => {
+                        const oid = co.id || co._id;
+                        ordersMap.set(oid, {
+                            id: oid,
+                            table_number: co.table_number,
+                            items: co.items || [],
+                            total_amount: co.total_amount || 0,
+                            status: co.status || 'pending',
+                            created_at: co.created_at || new Date().toISOString(),
+                            _cloudId: co._id
+                        });
+                    });
+                }
+            } catch (err) {}
+
+            // 3. Try Local Backend API
             try {
                 const response = await fetch(API_URL);
                 if (response.ok) {
-                    orders = await response.json();
-                } else {
-                    throw new Error("Backend API HTTP error");
+                    const backendOrders = await response.json();
+                    backendOrders.forEach(bo => ordersMap.set(bo.id, bo));
                 }
-            } catch (err) {
-                // Fallback to shared local storage orders
-                orders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-            }
+            } catch (err) {}
+
+            const orders = Array.from(ordersMap.values());
             renderOrders(orders);
         }
 
         async function updateStatus(orderId, newStatus) {
             try {
                 await fetch(`${API_URL}/${orderId}/status?status=${newStatus}`, { method: 'PUT' });
-            } catch (err) {
-                console.warn("Backend API offline, updating order status in local storage:", err);
-            }
-            
-            // Always update local storage for fallback / standalone mode
+            } catch (err) {}
+
             let orders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-            const idx = orders.findIndex(o => o.id === orderId);
+            const idx = orders.findIndex(o => (o.id === orderId || o._id === orderId));
+            if (idx !== -1) {
+                orders[idx].status = newStatus;
+                localStorage.setItem('quickdine_all_orders', JSON.stringify(orders));
+            }
+            fetchOrders();
+        }
             if (idx !== -1) {
                 orders[idx].status = newStatus;
                 localStorage.setItem('quickdine_all_orders', JSON.stringify(orders));

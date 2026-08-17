@@ -17,6 +17,9 @@ const initCart = () => {
     const API_BASE = isLocal 
         ? `http://${window.location.hostname}:${BACKEND_PORT}` 
         : `http://${window.location.hostname}:${BACKEND_PORT}`;
+    
+    // Cloud API for instant cross-device order sync (Mobile Phone <-> Owner Laptop)
+    const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
     // ─────────────────────────────────────────────────────────────────────────
 
     // Detect Table Number from URL query parameter (e.g. ?table=5) or localStorage
@@ -428,12 +431,19 @@ const initCart = () => {
                     
                     const orderRecord = {
                         id: data.id || ('QD-' + Math.floor(100000 + Math.random() * 900000)),
-                        table_number: currentTable,
+                        table_number: parseInt(currentTable),
                         items: orderedItems,
                         total_amount: totalAmount,
                         status: 'pending',
                         created_at: new Date().toISOString()
                     };
+
+                    fetch(CLOUD_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRecord)
+                    }).catch(e => console.warn("Cloud sync error:", e));
+
                     let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
                     allGlobalOrders.push(orderRecord);
                     localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
@@ -445,17 +455,24 @@ const initCart = () => {
                     updateHeaderBadge();
                     showOrderConfirmation(orderedItems, totalAmount, data.id);
                 } catch (error) {
-                    console.warn("Backend API unreachable, placing order locally:", error);
+                    console.warn("Backend API unreachable, placing order locally and cloud syncing:", error);
                     const fallbackOrderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
                     
                     const orderRecord = {
                         id: fallbackOrderId,
-                        table_number: currentTable,
+                        table_number: parseInt(currentTable),
                         items: orderedItems,
                         total_amount: totalAmount,
                         status: 'pending',
                         created_at: new Date().toISOString()
                     };
+
+                    fetch(CLOUD_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderRecord)
+                    }).catch(e => console.warn("Cloud sync error:", e));
+
                     let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
                     allGlobalOrders.push(orderRecord);
                     localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
