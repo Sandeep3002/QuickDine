@@ -372,12 +372,6 @@ async function buildLocalTables() {
 
   let allOrdersMap = new Map();
 
-  const parseTableNum = (val) => {
-    if (!val) return 0;
-    const clean = val.toString().replace(/[^0-9]/g, '');
-    return parseInt(clean, 10) || 0;
-  };
-
   // 2. Read Local Storage orders
   try {
     const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
@@ -397,11 +391,13 @@ async function buildLocalTables() {
       if (Array.isArray(cloudOrders)) {
         cloudOrders.forEach(co => {
           if (co && co.status !== 'paid' && co.status !== 'cancelled') {
-            const id = co.id || co._id;
+            const rawNum = co.table_number || co.table || '1';
+            const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+            const id = co.id || co._id || ('QD-' + Math.floor(Math.random() * 900000));
             allOrdersMap.set(id, {
               id: id,
-              table_number: parseTableNum(co.table_number || co.table),
-              items: co.items || [{ title: 'Ordered Dishes', price: '₹' + (co.total_amount || 0), quantity: 1 }],
+              table_number: tNum,
+              items: co.items || [{ title: 'Placed Order', price: '₹' + (co.total_amount || 0), quantity: 1 }],
               total_amount: Number(co.total_amount || 0),
               status: co.status || 'pending',
               created_at: co.created_at || new Date().toISOString(),
@@ -423,9 +419,8 @@ async function buildLocalTables() {
         const backendTables = await resp.json();
         if (Array.isArray(backendTables)) {
           backendTables.forEach(bt => {
-            const tNum = parseTableNum(bt.table_number);
-            if (tNum >= 1 && tNum <= 10) {
-              tablesMap.set(tNum, bt);
+            if (bt.table_number && tablesMap.has(Number(bt.table_number))) {
+              tablesMap.set(Number(bt.table_number), bt);
             }
           });
         }
@@ -436,7 +431,8 @@ async function buildLocalTables() {
   // Populate tables with aggregated orders from local & cloud
   const activeOrders = Array.from(allOrdersMap.values());
   activeOrders.forEach(order => {
-    const tNum = parseTableNum(order.table_number || order.table);
+    const rawNum = order.table_number || order.table || '1';
+    const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
     if (tNum >= 1 && tNum <= 10) {
       const tableData = tablesMap.get(tNum);
       if (tableData) {
