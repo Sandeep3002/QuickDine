@@ -427,77 +427,47 @@ const initCart = () => {
                 checkoutBtn.innerText = 'Sending to Kitchen...';
                 checkoutBtn.disabled = true;
 
-                try {
-                    const apiUrl = `${API_BASE}/api/orders`;
-                    const response = await fetch(apiUrl, {
+                const orderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
+                const orderRecord = {
+                    id: orderId,
+                    table_number: parseInt(currentTable),
+                    items: orderedItems,
+                    total_amount: totalAmount,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                };
+
+                // 1. Post to Cloud API immediately for instant mobile-to-owner sync
+                fetch(CLOUD_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderRecord)
+                }).catch(e => console.warn("Cloud sync error:", e));
+
+                // 2. If running locally, also post to localhost backend
+                if (isLocal) {
+                    fetch(`${API_BASE}/api/orders`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             table_number: currentTable,
                             items: orderedItems,
                             total_amount: totalAmount
                         })
-                    });
-                    if (!response.ok) throw new Error('Backend HTTP error');
-                    const data = await response.json();
-                    
-                    const orderRecord = {
-                        id: data.id || ('QD-' + Math.floor(100000 + Math.random() * 900000)),
-                        table_number: parseInt(currentTable),
-                        items: orderedItems,
-                        total_amount: totalAmount,
-                        status: 'pending',
-                        created_at: new Date().toISOString()
-                    };
-
-                    fetch(CLOUD_API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(orderRecord)
-                    }).catch(e => console.warn("Cloud sync error:", e));
-
-                    let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-                    allGlobalOrders.push(orderRecord);
-                    localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
-
-                    placedOrders.push(...orderedItems);
-                    localStorage.setItem('quickdine_placed_orders', JSON.stringify(placedOrders));
-                    cart = [];
-                    localStorage.setItem('quickdine_cart', JSON.stringify(cart));
-                    updateHeaderBadge();
-                    showOrderConfirmation(orderedItems, totalAmount, data.id);
-                } catch (error) {
-                    console.warn("Backend API unreachable, placing order locally and cloud syncing:", error);
-                    const fallbackOrderId = 'QD-' + Math.floor(100000 + Math.random() * 900000);
-                    
-                    const orderRecord = {
-                        id: fallbackOrderId,
-                        table_number: parseInt(currentTable),
-                        items: orderedItems,
-                        total_amount: totalAmount,
-                        status: 'pending',
-                        created_at: new Date().toISOString()
-                    };
-
-                    fetch(CLOUD_API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(orderRecord)
-                    }).catch(e => console.warn("Cloud sync error:", e));
-
-                    let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-                    allGlobalOrders.push(orderRecord);
-                    localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
-
-                    placedOrders.push(...orderedItems);
-                    localStorage.setItem('quickdine_placed_orders', JSON.stringify(placedOrders));
-                    cart = [];
-                    localStorage.setItem('quickdine_cart', JSON.stringify(cart));
-                    updateHeaderBadge();
-                    showOrderConfirmation(orderedItems, totalAmount, fallbackOrderId);
+                    }).catch(e => console.warn("Local backend sync error:", e));
                 }
+
+                // 3. Save to phone localStorage & update UI immediately
+                let allGlobalOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+                allGlobalOrders.push(orderRecord);
+                localStorage.setItem('quickdine_all_orders', JSON.stringify(allGlobalOrders));
+
+                placedOrders.push(...orderedItems);
+                localStorage.setItem('quickdine_placed_orders', JSON.stringify(placedOrders));
+                cart = [];
+                localStorage.setItem('quickdine_cart', JSON.stringify(cart));
+                updateHeaderBadge();
+                showOrderConfirmation(orderedItems, totalAmount, orderId);
             });
         }
     };
