@@ -31,59 +31,82 @@
 
     <script>
         const API_URL = `http://${window.location.hostname}:8000/api/orders`;
-        const CLOUD_API_URL = 'https://crudcrud.com/api/e5a9c6fc83b74efc9ced302d8cbc80a0/orders';
+        const CLOUD_API_URL = 'https://crudcrud.com/api/0248b791129540a18a4b94824e160c04/orders';
+
+        const fetchWithTimeout = (url, timeoutMs = 1500, options = {}) => {
+            return Promise.race([
+                fetch(url, options),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout')), timeoutMs))
+            ]);
+        };
 
         async function fetchOrders() {
             let ordersMap = new Map();
 
             // 1. Try Local Storage
-            const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
-            localOrders.forEach(o => ordersMap.set(o.id || o._id, o));
+            try {
+                const localOrders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
+                localOrders.forEach(o => {
+                    const oid = o.id || o._id || Math.random();
+                    ordersMap.set(oid, o);
+                });
+            } catch(e) {}
 
             // 2. Try Cloud Sync API (cross-device)
             try {
-                const cloudResp = await fetch(CLOUD_API_URL);
+                const cloudResp = await fetchWithTimeout(CLOUD_API_URL, 1500);
                 if (cloudResp.ok) {
                     const cloudOrders = await cloudResp.json();
-                    cloudOrders.forEach(co => {
-                        const oid = co.id || co._id;
-                        ordersMap.set(oid, {
-                            id: oid,
-                            table_number: co.table_number,
-                            items: co.items || [],
-                            total_amount: co.total_amount || 0,
-                            status: co.status || 'pending',
-                            created_at: co.created_at || new Date().toISOString(),
-                            _cloudId: co._id
+                    if (Array.isArray(cloudOrders)) {
+                        cloudOrders.forEach(co => {
+                            const oid = co.id || co._id || ('QD-' + Math.floor(Math.random() * 900000));
+                            const rawNum = co.table_number || co.table || '1';
+                            const tNum = parseInt(rawNum.toString().replace(/[^0-9]/g, ''), 10) || 1;
+                            ordersMap.set(oid, {
+                                id: oid,
+                                table_number: tNum,
+                                items: co.items || [{ title: 'Placed Order', price: '₹' + (co.total_amount || 0), quantity: 1 }],
+                                total_amount: co.total_amount || 0,
+                                status: co.status || 'pending',
+                                created_at: co.created_at || new Date().toISOString(),
+                                _cloudId: co._id
+                            });
                         });
-                    });
+                    }
                 }
             } catch (err) {}
 
             // 3. Try Local Backend API
-            try {
-                const response = await fetch(API_URL);
-                if (response.ok) {
-                    const backendOrders = await response.json();
-                    backendOrders.forEach(bo => ordersMap.set(bo.id, bo));
-                }
-            } catch (err) {}
+            const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            if (isLocalHost) {
+                try {
+                    const response = await fetchWithTimeout(API_URL, 1000);
+                    if (response.ok) {
+                        const backendOrders = await response.json();
+                        backendOrders.forEach(bo => ordersMap.set(bo.id, bo));
+                    }
+                } catch (err) {}
+            }
 
             const orders = Array.from(ordersMap.values());
             renderOrders(orders);
         }
 
         async function updateStatus(orderId, newStatus) {
-            try {
-                await fetch(`${API_URL}/${orderId}/status?status=${newStatus}`, { method: 'PUT' });
-            } catch (err) {}
-
             let orders = JSON.parse(localStorage.getItem('quickdine_all_orders')) || [];
             const idx = orders.findIndex(o => (o.id === orderId || o._id === orderId));
             if (idx !== -1) {
                 orders[idx].status = newStatus;
                 localStorage.setItem('quickdine_all_orders', JSON.stringify(orders));
             }
+
+            const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            if (isLocalHost) {
+                try {
+                    await fetchWithTimeout(`${API_URL}/${orderId}/status?status=${newStatus}`, 1000, { method: 'PUT' });
+                } catch (err) {}
+            }
+
             fetchOrders();
         }
 
