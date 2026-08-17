@@ -10,6 +10,8 @@ export default defineConfig({
         contact: resolve(__dirname, 'contact.html'),
         reservations: resolve(__dirname, 'reservations.html'),
         kitchen: resolve(__dirname, 'kitchen.html'),
+        owner: resolve(__dirname, 'owner.html'),
+        qrcodes: resolve(__dirname, 'qrcodes.html'),
       },
     },
   },
